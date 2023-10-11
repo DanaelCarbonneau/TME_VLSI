@@ -1,0 +1,6 @@
+*.o
+
+*.cf
+
+alu_tb
+adder_tb
