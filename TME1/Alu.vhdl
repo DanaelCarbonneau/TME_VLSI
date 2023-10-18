@@ -1,7 +1,6 @@
 LIBRARY IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
-
 entity mux_4to1 is
     port (
         a,b,c,d : in std_logic_vector(31 downto 0);
