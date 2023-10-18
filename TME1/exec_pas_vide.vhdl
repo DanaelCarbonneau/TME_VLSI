@@ -104,17 +104,20 @@ architecture mon_mux of mux_2to1 is
 architecture Behavior OF EXec is
 
 signal shift_out : std_logic_vector (31 downto 0);
-signal alu_out : std_logic_vector (31 downto 0);
 
 
 signal shift_out_not : std_logic_vector (31 downto 0);
-shift_out_not <= not shift_out;
 signal op1_not : std_logic_vector (31 downto 0);
-op1_not <= not dec_op1;
 
 
 signal mux_out_shift : std_logic_vector (31 downto 0);
 signal mux_out_op1 : std_logic_vector (31 downto 0);
+
+signal exe_push : std_logic;
+signal exe2mem_full : std_logic;
+signal mem_adr : std_logic_vector (31 downto 0);
+
+signal alu_out : std_logic_vector (31 downto 0);
 
 
 component mux_2to1
@@ -186,8 +189,10 @@ component fifo_72b
 end component;
 
 
-
+begin
 --  Component instantiation.
+	shift_out_not <= not shift_out;
+	op1_not <= not dec_op1;
 
 	mux_shift : mux_2to1
 	port map(
@@ -229,13 +234,22 @@ end component;
 					op2 => mux_out_shift,
 					cin => dec_alu_cy,
 					cmd => dec_alu_cmd,
-					res => exe_res,
+					res => alu_out,
 					cout	=> exe_c,
 					z	=> exe_z,
 					n	=> exe_n,
 					v	=> exe_v,
 					vdd	=> vdd,
 					vss	=> vss);
+
+	mux_alu :mux_2to1
+	port map(
+			a => dec_op1,
+			b => alu_out,
+			s0 => dec_pre_index,
+			z => mem_adr
+	);
+	exe_push <= '1' when (dec_mem_sb ='1' or dec_mem_sw='1') else '0';
 
 
 	exec2mem : fifo_72b
@@ -267,5 +281,6 @@ end component;
 					ck			 => ck,
 					vdd		 => vdd,
 					vss		 => vss);
+	
 
 end Behavior;
