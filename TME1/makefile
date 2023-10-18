@@ -13,4 +13,4 @@ simul :
 	$(GHDL) -r  $(PROJ)_tb --vcd=$(PROJ).vcd
 
 clean :
-	rm -f *.vcd *.o alu_tb adder_tb
+	rm -f *.vcd *.o alu_tb adder_tb shifter_tb
