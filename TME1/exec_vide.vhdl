@@ -76,7 +76,57 @@ end EXec;
 
 ----------------------------------------------------------------------
 
+LIBRARY IEEE;
+use IEEE.std_logic_1164.all;
+use IEEE.numeric_std.all;
+
+entity mux_2to1 is
+    port (
+        a,b : in std_logic_vector(31 downto 0);
+        s0   : in std_logic;
+        z       : out std_logic_vector(31 downto 0)
+    );
+    end mux_2to1;
+architecture mon_mux of mux_2to1 is
+    begin
+        process(a,b,s0) is
+            begin
+                if (s0 = '0' ) then
+                    z<= a;
+                elsif (s0 = '1') then
+                    z<= b;
+                end if;
+            end process;
+        end mon_mux;
+
+
+
 architecture Behavior OF EXec is
+
+signal shift_out : std_logic_vector (31 downto 0);
+signal alu_out : std_logic_vector (31 downto 0);
+
+
+signal shift_out_not : std_logic_vector (31 downto 0);
+shift_out_not <= not shift_out;
+signal op1_not : std_logic_vector (31 downto 0);
+op1_not <= not dec_op1;
+
+
+signal mux_out_shift : std_logic_vector (31 downto 0);
+signal mux_out_op1 : std_logic_vector (31 downto 0);
+
+
+component mux_2to1
+	port (
+		a,b : in std_logic_vector(31 downto 0);
+		s0   : in std_logic;
+		z       : out std_logic_vector(31 downto 0)
+	);
+end component;
+
+
+
 
 component alu
     port ( op1			: in Std_Logic_Vector(31 downto 0);
@@ -118,9 +168,37 @@ end component;
 
 
 --  Component instantiation.
+
+	mux_shift : mux_2to1
+	port map(
+			a => shift_out,
+			b => shift_out_not,
+			s0 => dec_comp_op2,
+			z => mux_out_shift
+	);
+
+	mux_op1 : mux_2to1
+	port map(
+			a => dec_op1,
+			b => op1_not,
+			s0 => dec_comp_op1,
+			z => mux_out_op1
+	);
+
 	alu_inst : alu
 	port map (	
-					vss		 => vss);
+					op1 => mux_out_op1,
+					op2 => mux_out_shift,
+					cin => dec_alu_cy,
+					cmd => dec_alu_cmd,
+					res => exe_res,
+					cout	=> exe_c,
+					z	=> exe_z,
+					n	=> exe_n,
+					v	=> exe_v,
+					vdd	=> vdd,
+					vss	=> vss);
+
 
 	exec2mem : fifo_72b
 	port map (	din(71)	 => dec_mem_lw,
