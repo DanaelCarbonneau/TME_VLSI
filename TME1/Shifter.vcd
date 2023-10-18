@@ -1,0 +1,107 @@
+$date
+  Wed Oct 18 11:13:59 2023
+$end
+$version
+  GHDL v0
+$end
+$timescale
+  1 fs
+$end
+$scope module standard $end
+$upscope $end
+$scope module std_logic_1164 $end
+$upscope $end
+$scope module numeric_std $end
+$upscope $end
+$scope module shifter_tb $end
+$var reg 1 ! t_shift_lsl $end
+$var reg 1 " t_shift_lsr $end
+$var reg 1 # t_shift_asr $end
+$var reg 1 $ t_shift_ror $end
+$var reg 1 % t_shift_rrx $end
+$var reg 5 & t_shift_val[4:0] $end
+$var reg 32 ' t_din[31:0] $end
+$var reg 1 ( t_cin $end
+$var reg 32 ) t_dout[31:0] $end
+$var reg 1 * t_cout $end
+$scope module shifter1 $end
+$var reg 1 + shift_lsl $end
+$var reg 1 , shift_lsr $end
+$var reg 1 - shift_asr $end
+$var reg 1 . shift_ror $end
+$var reg 1 / shift_rrx $end
+$var reg 5 0 shift_val[4:0] $end
+$var reg 32 1 din[31:0] $end
+$var reg 1 2 cin $end
+$var reg 32 3 dout[31:0] $end
+$var reg 1 4 cout $end
+$var reg 1 5 vdd $end
+$var reg 1 6 vss $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+#0
+1!
+0"
+0#
+0$
+0%
+b11110 &
+b00000000000000000000000000001101 '
+0(
+b01000000000000000000000000000000 )
+1*
+1+
+0,
+0-
+0.
+0/
+b11110 0
+b00000000000000000000000000001101 1
+02
+b01000000000000000000000000000000 3
+14
+15
+06
+#10000000
+0!
+1"
+b01010 &
+b00000000000000000000000000001100 '
+b00000000000000000000000000000000 )
+0*
+0+
+1,
+b01010 0
+b00000000000000000000000000001100 1
+b00000000000000000000000000000000 3
+04
+#20000000
+0"
+1#
+0,
+1-
+#30000000
+0#
+1$
+b00000011000000000000000000000000 )
+0-
+1.
+b00000011000000000000000000000000 3
+#40000000
+0$
+1%
+b00000000000000000000000000001101 '
+b00000000000000000000000000000110 )
+1*
+0.
+1/
+b00000000000000000000000000001101 1
+b00000000000000000000000000000110 3
+14
+#50000000
+1(
+b10000000000000000000000000000110 )
+12
+b10000000000000000000000000000110 3
+#60000000

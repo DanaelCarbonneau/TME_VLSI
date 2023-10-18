@@ -1,4 +1,4 @@
-PROJ = Alu
+PROJ = Shifter
 
 GHDL = ghdl
 GHDLOPTS = 
@@ -7,7 +7,6 @@ GHDLOPTS =
 all : simul 
 
 simul : 
-	$(GHDL) -a 	-v Shifter.vhdl 
 	$(GHDL) -a  -v $(PROJ).vhdl
 	$(GHDL) -a  -v $(PROJ)_tb.vhdl
 	$(GHDL) -e  -v $(PROJ)_tb

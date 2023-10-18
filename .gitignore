@@ -4,3 +4,4 @@
 
 alu_tb
 adder_tb
+shifter_tb
