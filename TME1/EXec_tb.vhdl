@@ -3,7 +3,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 
-entity Shifter_tb is
+entity Exec_tb is
 end entity;
 
 
@@ -105,7 +105,7 @@ architecture tb of Exec_tb is
         signal t_dec_shift_ror	: Std_Logic;
         signal t_dec_shift_rrx	: Std_Logic;
         signal t_dec_shift_val	: Std_Logic_Vector(4 downto 0);
-        signal t_dec_cy			: td_Logic;
+        signal t_dec_cy			: std_logic;
 
 -- Alu osignal t_perand selectin
         signal t_dec_comp_op1	: Std_Logic;
@@ -114,14 +114,14 @@ architecture tb of Exec_tb is
 -- Alu csignal t_ommand
        signal t_dec_alu_cmd		: Std_Logic_Vector(1 downto 0);
 -- Exe bypass to decod
-signal t_exe_res			:  Std_Logic_Vector(31 downto 0);       
-signal t_exe_c				: Std_Logic;
-signal t_exe_v				:  Std_Logic;
-signal t_exe_n				: Std_Logic;
-signal t_exe_z				: Std_Logic;
-signal t_exe_dest			: Std_Logic_Vector(3 downto 0); -- Rd destination
-signal t_exe_wb			: Std_Logic; -- Rd destination write back
-signal t_exe_flag_wb		: Std_Logic; -- CSPR modifiy
+        signal t_exe_res			:  Std_Logic_Vector(31 downto 0);       
+        signal t_exe_c				: Std_Logic;
+        signal t_exe_v				:  Std_Logic;
+        signal t_exe_n				: Std_Logic;
+        signal t_exe_z				: Std_Logic;
+        signal t_exe_dest			: Std_Logic_Vector(3 downto 0); -- Rd destination
+        signal t_exe_wb			: Std_Logic; -- Rd destination write back
+        signal t_exe_flag_wb		: Std_Logic; -- CSPR modifiy
 
        -- Mem isignal t_nterface
        signal t_exe_mem_adr		:  Std_Logic_Vector(31 downto 0); -- Alu res register
@@ -184,7 +184,7 @@ signal t_exe_flag_wb		: Std_Logic; -- CSPR modifiy
             t_exe_z				, 
             t_exe_dest			,
             t_exe_wb			, 
-            t_exe_flag_wbgic,        
+            t_exe_flag_wb,        
                -- Mem isignal t_nterface
             t_exe_mem_adr,		
             t_exe_mem_data,	
@@ -193,56 +193,48 @@ signal t_exe_flag_wb		: Std_Logic; -- CSPR modifiy
             t_exe_mem_lb,		
             t_exe_mem_sw,		
             t_exe_mem_sb,		
-            t_exe2mem_empty_logic,
+            t_exe2mem_empty,
             t_mem_pop,     
         -- globasignal t_l interface
             t_ck,			
             t_reset_n,		
             '1',			
-            '0',			
+            '0'			
             );
 
 
+        process
+                begin
+                        t_ck <= '0';
+                        wait for 1 ns;
+                        t_ck <= '1';
+                        wait for 1 ns;
+        end process;
             process
             begin
+
+                t_reset_n <= '0';
+                wait for 10 ns;
+                t_reset_n <= '1';
                t_dec_op1 <= std_logic_vector(to_unsigned(15,32));
                t_dec_op2 <= std_logic_vector(to_unsigned(12,32));
                t_dec_alu_cmd <= std_logic_vector(to_unsigned(0,2));
-            wait for 10 ns;
+               t_dec_comp_op1 <= '1';
+               t_dec_comp_op2 <= '0';
+               t_dec_shift_val <= std_logic_vector(to_unsigned(0,5));
+               t_dec_shift_lsl <= '1';
+                t_dec_mem_sw <= '1';
+                t_dec_pre_index <= '0';
+                t_dec_mem_data <= X"FFFF0000";
+               
+
             t_dec_op1 <= std_logic_vector(to_unsigned(15,32));
-            t_dec_op2 <= std_logic_vector(to_unsigned(12,32));
+            t_dec_op2 <= std_logic_vector(to_unsigned(13,32));
             t_dec_alu_cmd <= std_logic_vector(to_unsigned(0,2));
-            wait for 10 ns;
-                t_shift_lsl <= '0';
-                t_shift_lsr <= '0';
-                t_shift_asr <= '1';
-                t_shift_ror <= '0';
-                t_shift_rrx <= '0';
-                t_shift_val <= std_logic_vector(to_unsigned(10,5));
-                t_din       <= std_logic_vector(to_unsigned(12,32));
-                t_cin       <= '0';
-            wait for 10 ns;
-                t_shift_lsl <= '0';
-                t_shift_lsr <= '0';
-                t_shift_asr <= '0';
-                t_shift_ror <= '1';
-                t_shift_rrx <= '0';
-                t_shift_val <=  std_logic_vector(to_unsigned(10,5));
-                t_din       <= std_logic_vector(to_unsigned(12,32));
-                t_cin       <= '0';
-            wait for 10 ns;
-                t_shift_lsl <= '0';
-                t_shift_lsr <= '0';
-                t_shift_asr <= '0';
-                t_shift_ror <= '0';
-                t_shift_rrx <= '1';
-                t_shift_val <=  std_logic_vector(to_unsigned(10,5));
-                t_din       <= std_logic_vector(to_unsigned(13,32));
-                t_cin       <= '0';
-            wait for 10 ns;
-                t_cin       <= '1';
-            wait for 10 ns;
-                
+
+            t_mem_pop <= '1';
+            
             wait;
             end process;
+        end tb;
             

@@ -74,32 +74,6 @@ entity EXec is
 			vss				: in bit);
 end EXec;
 
-----------------------------------------------------------------------
-
-LIBRARY IEEE;
-use IEEE.std_logic_1164.all;
-use IEEE.numeric_std.all;
-
-entity mux_2to1 is
-    port (
-        a,b : in std_logic_vector(31 downto 0);
-        s0   : in std_logic;
-        z       : out std_logic_vector(31 downto 0)
-    );
-    end mux_2to1;
-architecture mon_mux of mux_2to1 is
-    begin
-        process(a,b,s0) is
-            begin
-                if (s0 = '0' ) then
-                    z<= a;
-                elsif (s0 = '1') then
-                    z<= b;
-                end if;
-            end process;
-        end mon_mux;
-
-
 
 architecture Behavior OF EXec is
 
@@ -191,7 +165,11 @@ end component;
 
 begin
 --  Component instantiation.
-	exe_pop <= not dec2exe_empty;
+	exe_pop <= <= '1' when (	
+		(dec_mem_sb ='0' or dec_mem_sw='0' or dec_mem_lw='0' or dec_mem_lb='0') --instruction mémoire
+	or exe2mem_full = '0') -- file non pleine vers la mémoire
+
+
 	exe_dest <=dec_exe_dest;
 	exe_wb <= dec_exe_wb;
 	exe_flag_wb <= dec_flag_wb;
@@ -246,6 +224,8 @@ begin
 					vdd	=> vdd,
 					vss	=> vss);
 
+	exe_res <= alu_out;
+
 	mux_alu :mux_2to1
 	port map(
 			a => dec_op1,
@@ -253,7 +233,10 @@ begin
 			s0 => dec_pre_index,
 			z => mem_adr
 	);
-	exe_push <= '1' when (not(exe2mem_full='1') and (dec_mem_sb ='1' or dec_mem_sw='1')) else '0';
+	exe_push <= '1' when (exe2mem_full='0' 
+					and dec2exe_empty = '0' 		--J'ai une instruction à traiter
+					and (dec_mem_sb ='1' or dec_mem_sw='1')) -- et c'est un accès mémoire
+				else '0';
 
 
 	exec2mem : fifo_72b

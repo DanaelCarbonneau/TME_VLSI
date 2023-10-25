@@ -26,7 +26,7 @@ architecture mon_shifter of Shifter is
             shift_amount := to_integer(unsigned(shift_val));
         if (shift_lsl = '1') then
             -- shift left avec des unsigned --
-            cout <= din(32 - shift_amount);
+            cout <= din(31 - shift_amount);
             dout <= std_logic_vector(shift_left(unsigned(din),shift_amount));
         elsif (shift_lsr = '1') then
             -- shift logique droite --
@@ -44,6 +44,9 @@ architecture mon_shifter of Shifter is
             -- shift rrx--
             cout <= din(0);
             dout(31 downto 0) <=cin & din (31 downto 1);       --On met cin dans dout(31) et dout(31 downto 1) dans dout(30 downto 0)
+        else 
+            cout <= cin;
+            dout <= din;
         end if;
     end process;
 end mon_shifter;
