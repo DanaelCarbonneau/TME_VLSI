@@ -191,6 +191,10 @@ end component;
 
 begin
 --  Component instantiation.
+	exe_pop <= not dec2exe_empty;
+	exe_dest <=dec_exe_dest;
+	exe_wb <= dec_exe_wb;
+	exe_flag_wb <= dec_flag_wb;
 	shift_out_not <= not shift_out;
 	op1_not <= not dec_op1;
 
@@ -249,7 +253,7 @@ begin
 			s0 => dec_pre_index,
 			z => mem_adr
 	);
-	exe_push <= '1' when (dec_mem_sb ='1' or dec_mem_sw='1') else '0';
+	exe_push <= '1' when (not(exe2mem_full='1') and (dec_mem_sb ='1' or dec_mem_sw='1')) else '0';
 
 
 	exec2mem : fifo_72b
