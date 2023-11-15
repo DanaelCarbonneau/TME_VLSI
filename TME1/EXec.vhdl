@@ -165,9 +165,9 @@ end component;
 
 begin
 --  Component instantiation.
-	exe_pop <= <= '1' when (	
+	exe_pop <= '1' when (	
 		(dec_mem_sb ='0' or dec_mem_sw='0' or dec_mem_lw='0' or dec_mem_lb='0') --instruction mémoire
-	or exe2mem_full = '0') -- file non pleine vers la mémoire
+	or exe2mem_full = '0'); -- file non pleine vers la mémoire
 
 
 	exe_dest <=dec_exe_dest;

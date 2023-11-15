@@ -216,21 +216,25 @@ architecture tb of Exec_tb is
                 t_reset_n <= '0';
                 wait for 10 ns;
                 t_reset_n <= '1';
-               t_dec_op1 <= std_logic_vector(to_unsigned(15,32));
-               t_dec_op2 <= std_logic_vector(to_unsigned(12,32));
-               t_dec_alu_cmd <= std_logic_vector(to_unsigned(0,2));
-               t_dec_comp_op1 <= '1';
-               t_dec_comp_op2 <= '0';
-               t_dec_shift_val <= std_logic_vector(to_unsigned(0,5));
-               t_dec_shift_lsl <= '1';
+                t_dec2exe_empty <= '0';
+                
+                t_dec_op1 <= std_logic_vector(to_unsigned(0,32));
+                t_dec_op2 <= std_logic_vector(to_unsigned(0,32));
+                t_dec_exe_dest <= std_logic_vector(to_unsigned(0,4));
+
+                t_dec_alu_cmd <= std_logic_vector(to_unsigned(0,2));
+                t_dec_comp_op1 <= '1';
+                t_dec_comp_op2 <= '0';
+                t_dec_shift_val <= std_logic_vector(to_unsigned(0,5));
+                t_dec_shift_lsl <= '1';
                 t_dec_mem_sw <= '1';
                 t_dec_pre_index <= '0';
                 t_dec_mem_data <= X"FFFF0000";
                
 
-            t_dec_op1 <= std_logic_vector(to_unsigned(15,32));
-            t_dec_op2 <= std_logic_vector(to_unsigned(13,32));
-            t_dec_alu_cmd <= std_logic_vector(to_unsigned(0,2));
+                t_dec_op1 <= std_logic_vector(to_unsigned(15,32));
+                t_dec_op2 <= std_logic_vector(to_unsigned(13,32));
+                t_dec_alu_cmd <= std_logic_vector(to_unsigned(0,2));
 
             t_mem_pop <= '1';
             
