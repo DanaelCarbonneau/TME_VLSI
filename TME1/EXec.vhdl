@@ -93,6 +93,10 @@ signal mem_adr : std_logic_vector (31 downto 0);
 
 signal alu_out : std_logic_vector (31 downto 0);
 
+signal shifter_c : std_logic;
+signal alu_c : std_logic;
+
+
 
 component mux_2to1
 	port (
@@ -204,7 +208,7 @@ begin
     din       => dec_op2		,
     cin       => dec_cy			,
     dout      => shift_out		,
-    cout      => exe_c			,
+    cout      => shifter_c		,
     -- global interface --
     vdd       => vdd			,
     vss       => vss	);
@@ -217,7 +221,7 @@ begin
 					cin => dec_alu_cy,
 					cmd => dec_alu_cmd,
 					res => alu_out,
-					cout	=> exe_c,
+					cout	=> alu_c,
 					z	=> exe_z,
 					n	=> exe_n,
 					v	=> exe_v,
@@ -225,6 +229,7 @@ begin
 					vss	=> vss);
 
 	exe_res <= alu_out;
+	exe_c <= shifter_c or alu_c;
 
 	mux_alu :mux_2to1
 	port map(
