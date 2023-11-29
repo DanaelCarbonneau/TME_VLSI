@@ -672,45 +672,73 @@ begin
 		mtrans_loop_adr <= '0';
 
 		if dec2if_full = '0' and reg_pcv = '1' then 	-- la FIFO n'est pas pleine
-		
+
+			dec2if_push <= '1';
+			cur_state <= RUN;
 		else --la FIFO est pleine, on reste dans FETCH
 			cur_state <= FECTH
 		end if;
 			
-
 	when RUN => 
-		if cond then 				--T1 : ifdec2 vide, dec2exe pleine ou pred invalide, 
-			--action : nouvelle valeur de PC envoyée si dec2if n'est pas pleine
-
-			cur_state <= RUN
+		if if2dec_empty = '1' or dec2exe_full = '1' or condv = '0' then 				--T1 : ifdec2 vide, dec2exe pleine ou pred invalide, 
+			dec2if_push; --action : nouvelle valeur de PC envoyée si dec2if n'est pas pleine
+			cur_state <= RUN;
+			if2dec_pop <= '0';
 		else if cond then 			-- T2 : prédicat faux,
 			-- action : instruction rejetée
-			cur_state <= RUN
+			if2dec_pop <= '1';
+			cur_state <= RUN;
 		else if cond then 			-- T3 : prédicat vrai, 
 			-- action : instruction exécutée
-			cur_state <= RUN
+			if2dec_pop <= '1';
+			dec2exe_push <= '1';
+			cur_state <= RUN;
 		else if cond then 			-- T4 : l'instruction appelle une fonction
-
-			cur_state <= LINK
+			if2dec_pop <= '0';
+			--TODO invalider PC (vider la suite)
+			inval_adr1 <= X"F";
+			inval1 <= '1';
+			inc_pc <= '0';
+			cur_state <= LINK;
 		else if cond then 			-- T5 : l'instruction est un branchement
-
-			cur_state <= BRANCH
-
+			if2dec_pop <= '1';		--premier pop 
+			--invalider PC 
+			inval_adr1 <= X"F";
+			inval1 <= '1';
+			inc_pc <= '0';
+			cur_state <= BRANCH;
 		else if cond then 			-- T6 : l'instruction est un transfert
-
-			cur_state <= MTRANS
+			-- TODO faire les transferts
+			cur_state <= MTRANS;
 		end if ;
 
 	when LINK =>
-		-- T1 
+		-- T1 , commande d'exec pour calculer une nouvelle valeur de PC (passer de +8 à +4)
 
-	when BRANCH =>
+		wdata1 <= reg_pc;-- -4 sur le PC ici
+		wadr1 <= X"E";
+		wen1 <= '1';
+		cur_state <= BRANCH;
 
-	when MTRANS =>
+	when BRANCH => -- calcule l'adresse de branchement
 
-	when BRANCH =>
+		if if2dec_empty = '1' then --T1 if2dec vide
 
+			cur_state <= BRANCH;
+		
+		else	-- T2 if2dec non vide
+			if2dec_pop <= '1';
+			cur_state <= RUN;
+		end if;
 
+	when MTRANS => --TODO (raf)
+		if '1'='1' then 		--fin du traitement des instructions de transfert
+
+			cur_state <= RUN;
+		else
+			cur_state <= MTRANS;
+
+		end if;
 
 	end case;
 end process;
