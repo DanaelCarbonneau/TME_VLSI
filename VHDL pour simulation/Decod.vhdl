@@ -131,6 +131,7 @@ component reg
 		inval2		: in Std_Logic;
 
 		inval_czn	: in Std_Logic;
+
 		inval_ovr	: in Std_Logic;
 
 	-- PC
@@ -525,11 +526,11 @@ begin
 								if_ir(7 downto 4) = "1001" else '0';
 	swap_t <= '1' when	if_ir(27 downto 23) = "00010" and
 								if_ir(11 downto 4) = "00001001" else '0';
-	branch_t <= '1' when if_ir(27 downto 25) ="101";
+	branch_t <= '1' when if_ir(27 downto 25) ="101" else '0';
 	
-	trans_t <= '1' when if_ir(27 downto 24) ="10" and branch_t = '0' and mtrans_t ='0';
+	trans_t <= '1' when if_ir(27 downto 24) ="10" and branch_t = '0' and mtrans_t ='0' else '0';
 
-	mtrans_t <= '1'  when if_ir(27 downto 24) ="100";
+	mtrans_t <= '1'  when if_ir(27 downto 24) ="100" else '0';
 
 -- decod regop opcode
 
@@ -560,16 +561,17 @@ begin
 	blink <= '0';
 -- Decode interface operands TODO
 	op1 <=	reg_pc	when branch_t = '1'	else
-				
+			exe_res when radr1 = exe_dest else
 				rdata1;
 
 	offset32(25 downto 0) <=	if_ir(23 downto 0) & '0' & '0';
 	offset32(31 downto 26) <= (others => if_ir(23)); --Extension de signe pas a la mano. :^(
 
 	op2	<=  offset32 when branch_t = '1' else
+			exe_res	 when ((radr3 = exe_dest) and if_ir(25)='0' and regop_t='1') else
 			X"000000" & if_ir(7 downto 0) when  (regop_t  = '1') and (if_ir(25) = '1') else
 			X"00000" & if_ir(11 downto 0) when  (trans_t  = '1') and (if_ir(25) = '0') else
-				rdata2;
+				rdata3;
 
 	alu_dest <=	 if_ir(15 downto 12) when regop_t = '1' else
 				 if_ir(15 downto 12) when trans_t = '1' else
@@ -608,7 +610,7 @@ begin
 			and 
 			(if_ir(4) = '1')
 			)
-		);						--Rs
+		) else (others => '0');						--Rs
 
 	radr3 <= if_ir(3 downto 0) when (
 		(
@@ -633,14 +635,18 @@ begin
 	inval_exe_adr <= X"F" when branch_t = '1' else
 							if_ir(15 downto 12);
 
-	inval_exe <=	'1'	when (
+	inval_exe <=--	'0' when (if_ir = X"E1A00000") else
+	
+			'1'	when (
 		(
 			branch_t = '1'
-		) 
+		)
+		 
 		or 
 		(
 			not (tst_i = '1' or teq_i = '1' or cmp_i = '1' or cmn_i = '1')
 		)
+		
 	) else '0';
 
 	inval_mem_adr <=	if_ir (15 downto 12) when (trans_t = '1') else mtrans_rd;

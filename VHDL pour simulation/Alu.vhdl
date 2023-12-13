@@ -12,11 +12,11 @@ architecture mon_mux of mux_4to1 is
     begin
         process(a,b,c,d,s0,s1) is
             begin
-                if (s0 = '0' and s1 = '0') then
+                if (s1 = '0' and s0 = '0') then
                     z<= a;
-                elsif (s0 = '1' and s1 = '0') then
+                elsif (s1 = '1' and s0 = '0') then
                     z<= b;
-                elsif(s0 = '0' and s1 = '1') then
+                elsif(s1 = '0' and s0 = '1') then
                     z<= c;
                 else 
                     z <= d;
@@ -51,10 +51,12 @@ architecture mon_alu of Alu is
             z           : out std_logic_vector(31 downto 0)
         );
         end component;
-    signal radd, resor, rand, rxor, rmux : std_logic_vector(31 downto 0);
+    signal radd, resor, rand, rxor, rmux, ecin : std_logic_vector(31 downto 0);
     
     begin
-    radd <= std_logic_vector( unsigned(op1)+ unsigned(op2));
+        ecin(31 downto 1 )<=(others => '0');
+    ecin(0) <= cin;
+    radd <= std_logic_vector( unsigned(op1)+ unsigned(op2)+ unsigned(ecin));
     resor <= op1 or op2;
     rand <= op1 and op2;
     rxor <= op1 xor op2;
@@ -95,7 +97,7 @@ architecture mon_alu of Alu is
     -- Pour toutes les opérations,
     -- On compare le résultat du multiplexeur avec 0.
 
-    z <= '1' when rmux = "0" else '0';
+    z <= '1' when rmux = X"000000000" else '0';
 
 
 end mon_alu;
