@@ -97,7 +97,7 @@ architecture mon_alu of Alu is
     -- Pour toutes les opérations,
     -- On compare le résultat du multiplexeur avec 0.
 
-    z <= '1' when rmux = X"000000000" else '0';
+    z <= '1' when rmux = X"00000000" else '0';
 
 
 end mon_alu;

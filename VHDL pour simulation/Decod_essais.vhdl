@@ -330,13 +330,13 @@ signal alu_cy 		: Std_Logic;
 signal alu_cmd		: Std_Logic_Vector(1 downto 0);
 
 -- DECOD FSM
+signal ugh : Std_logic_Vector (7 downto 0);
 
 type state_type is (FETCH, RUN, BRANCH, LINK, MTRANS);
 signal cur_state, next_state : state_type;
 
 signal debug_state : Std_Logic_Vector(3 downto 0) := X"0";
 
-signal operv : Std_Logic;
 
 begin
 
@@ -577,9 +577,11 @@ begin
 
 	alu_dest <=	 if_ir(15 downto 12) when regop_t = '1' else
 				 if_ir(15 downto 12) when trans_t = '1' else
+				 X"F" when branch_t = '1' else
 				 if_ir(19 downto 16);
 
 	alu_wb	<= '1'	when (cond = '1') 	and (regop_t  = '1') else
+				'1'	when (cond = '1') 	and (branch_t  = '1') else
 			   '1'	when (cond = '1') 	and (trans_t  = '1')  and (if_ir(21) = '1') else
 			   '1'	when (cond = '1') 	and (mtrans_t  = '1')  and (if_ir(21) = '1') else
 			   '0';
@@ -612,7 +614,7 @@ begin
 			and 
 			(if_ir(4) = '1')
 			)
-		) else (others => '0');						--Rs
+		);						--Rs
 
 	radr3 <= if_ir(3 downto 0) when (
 		(
@@ -638,24 +640,20 @@ begin
 							if_ir(15 downto 12);
 
 	inval_exe <=--	'0' when (if_ir = X"E1A00000") else
-	
-			'1'	when (
-		(
-			branch_t = '1'
-		)
-		 
-		or 
-		(
-			not (tst_i = '1' or teq_i = '1' or cmp_i = '1' or cmn_i = '1')
-		)
+
+			'0'	when (
 		
-	) else '0';
+			(tst_i = '1' or teq_i = '1' or cmp_i = '1' or cmn_i = '1')
+		
+		
+	) else  '1' when regop_t = '1' or branch_t = '1'
+	else '0';
 
 	inval_mem_adr <=	if_ir (15 downto 12) when (trans_t = '1') else mtrans_rd;
 
 	inval_mem <=	'1'	when trans_t = '1' else	'0';
 
-	inval_czn <= if_ir(20) when (regop_t = '1') or ( mult_t = '1') else '0';
+	inval_czn <= if_ir(20) when (regop_t = '1') or ( mult_t = '1') or (tst_i = '1' or teq_i = '1' or cmp_i = '1' or cmn_i = '1') else '0';
 			
 
 	inval_ovr <= if_ir(20) when (
@@ -717,7 +715,7 @@ begin
 
 -- Alu command
 
-	alu_cmd <=	"00" when add_i ='1' or sub_i ='1' or rsb_i ='1' or adc_i ='1' or sbc_i ='1' or rsc_i ='1' or cmp_i ='1' or cmn_i ='1' else
+	alu_cmd <=	"00" when add_i ='1' or sub_i ='1' or rsb_i ='1' or adc_i ='1' or sbc_i ='1' or rsc_i ='1' or cmp_i ='1' or cmn_i ='1' or branch_t = '1' else
 				"10" when orr_i ='1' or mov_i ='1' or mvn_i ='1' else
 				"01" when tst_i ='1' or and_i ='1' or mov_i ='1' else
 				"11" when eor_i ='1' or teq_i ='1';
@@ -777,34 +775,62 @@ begin
 
 -- operand validite **TODO** regarder si exec est en train de produire une operande dont j'ai besoin je la choppe au vol. 
 -- Peut faire une verion conservatrice en regardant les bits dde validité des opérandes dans reg. 
-
+process (ck)
 	begin 
+		--if (radr1 = exe_dest) then 
+		--	operv <= '1';
 		if (regop_t = '1') then 
-			if ((if_ir(25)= '0'))	then -- trois opérandes
-				if (if_ir(4) = '0') then
-					operv <= '1'  when rvalid1 = '1' and rvalid2 = '1' else '0';
-				else 
-					operv <= '1' when rvalid1 = '1' and rvalid2 = '1' and rvalid3 = '1' else '0';
+			if ((if_ir(25)= '0'))	then 
+				if (if_ir(4) = '0') then 
+					if((rvalid1 = '1' or radr1 = exe_dest) and (rvalid3 = '1' or radr3 = exe_dest) ) then
+						operv <= '1'; 
+					 else 
+					 	operv <='0';
+						ugh <= "00000001";
+
+					end if;
+				else -- trois opérandes
+					if((rvalid1 = '1' or radr1 = exe_dest) and (rvalid2 = '1' or radr2 = exe_dest)  and (rvalid3 = '1' or radr3 = exe_dest)) then
+						operv <= '1';
+					else 
+						operv <= '0';
+						ugh <= "00000010";
+					end if;
 				end if;
-			else -- Il y a un immédiat, deux opérandes
-				operv <= '1' when rvalid1 = '1' else '0' ;
+
+			else -- Il y a un immédiat,
+				if (rvalid1 = '1' or radr1 = exe_dest) then
+					operv <= '1';
+				else 
+					operv<='0' ;
+					ugh <= "00000011";
+
+				end if;
 			end if;
-		else if (branch_t = '1') then
+		elsif (branch_t = '1') then
 			operv <= '1';
-		else if (trans_t = '1') then 
+		elsif (trans_t = '1') then 
 			if (if_ir(25) = '0') then 
-				operv <= '1' when rvalid1 = '1' else '0';
-			else 
-				operv <= '1' when rvalid1 = '1' and rvalid2 = '1' else '0';
+				if (rvalid1 = '1' or radr1 = exe_dest) then
+
+					operv <= '1';
+				else operv<='0';
+				end if;
+			else
+				
+				if((rvalid1 = '1' or radr1 = exe_dest) and (rvalid3 = '1' or radr3 = exe_dest)) then
+					operv <= '1' ;
+				else  operv<='0';
+				end if;
 			end if;
-		else if (mult_t = '1') then -- On ne traitera pas ce cas
+		elsif (mult_t = '1') then -- On ne traitera pas ce cas
 			operv <= '0';	
-		else if (blink = '1') then 
+		elsif (blink = '1') then 
 			operv <= '1';
 		else -- peut être d'autres cas à traiter...
 			operv <= '1';
 		end if;
-
+end process;
 
 -- FSM
 
@@ -821,7 +847,7 @@ end if;
 
 end process;
 
-inc_pc <= dec2if_push;
+--inc_pc <= dec2if_push;
 --state machine process.
 process (cur_state, dec2if_full, cond, condv, operv, dec2exe_full, if2dec_empty, reg_pcv, bl_i,
 			branch_t, and_i, eor_i, sub_i, rsb_i, add_i, adc_i, sbc_i, rsc_i, orr_i, mov_i, bic_i,
@@ -843,6 +869,7 @@ begin
 		if condv = '1' then 
 			if cond = '1' then --prédicat vrai.
 				if operv = '1' then -- opérandes valides
+
 					if if2dec_empty = '1' or dec2exe_full = '1' then 				--**T1** : ifdec2 vide, dec2exe pleine 
 						inc_pc <= '1';
 						dec2if_push <= '1'; --action : nouvelle valeur de PC envoyée si dec2if n'est pas pleine
@@ -854,9 +881,9 @@ begin
 						dec2if_push <= '0';
 						next_state <= LINK;
 					elsif branch_t ='1' then 			-- T5 : l'instruction est un branchement
-						if2dec_pop <= '1';		--premier pop 
-						--invalider PC 
+						dec2exe_push <= '1';		--On n'envoie rien à exécuter
 						dec2if_push <= '0';
+						inc_pc <= '0';				--on arrête d'incrémenter PC
 						next_state <= BRANCH;
 					elsif mtrans_t = '1' then 			-- T6 : l'instruction est un transfert
 						-- TODO faire les transferts
@@ -866,18 +893,24 @@ begin
 						if2dec_pop <= '1';
 						dec2exe_push <= '1';
 						next_state <= RUN;
+					end if;
 				else -- opérandes invalides, on gèle
 					dec2if_push <= '0';
 					inc_pc <= '0';
 					if2dec_pop <= '0';
 					dec2exe_push <= '0';
+				end if;
 			else --prédicat faux, on passe, **T2**
 				-- action : instruction rejetée
+				inc_pc <= '1';
 				dec2if_push <= '1';
 				if2dec_pop <= '1';
+				dec2exe_push <= '0';
 				next_state <= RUN;
+			end if;
 				
 		else --prédicat invalide, on gèle
+			inc_pc <= '0';
 			if2dec_pop <= '0';
 			dec2exe_push <= '0';
 		end if;
@@ -887,7 +920,14 @@ begin
 		
 
 	when BRANCH => -- calcule l'adresse de branchement
-	next_state <= MTRANS;
+
+		if reg_pcv = '1' then
+			if2dec_pop <= '1'; 
+			next_state <= RUN;
+		else 
+			if2dec_pop <= '1';
+			next_state <= BRANCH;
+		end if;
 		
 
 	when MTRANS => --TODO (raf)

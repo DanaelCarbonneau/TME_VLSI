@@ -376,19 +376,16 @@ begin
 	
 	-- Lecture dans CSPR --
 	
-	process(ck) is
-		begin
-			if rising_edge(ck) then
-				reg_cry <= cspr(0);
-				reg_zero<= cspr(1);
-				reg_neg	<= cspr(2);
-				reg_ovr	<= cspr(3);
+	
+	reg_cry <= cspr(0);
+	reg_zero<= cspr(1);
+	reg_neg	<= cspr(2);
+	reg_ovr	<= cspr(3);
 
-				reg_cznv<= cspr(4);
-				reg_vv	<= cspr(5);
+	reg_cznv<= cspr(4);
+	reg_vv	<= cspr(5);
 
-			end if;
-		end process;
+		
 
 	-- Invalidation des ports --
 

@@ -528,9 +528,9 @@ begin
 								if_ir(11 downto 4) = "00001001" else '0';
 	branch_t <= '1' when if_ir(27 downto 25) ="101" else '0';
 	
-	trans_t <= '1' when if_ir(27 downto 24) ="10" and branch_t = '0' and mtrans_t ='0' else '0';
+	trans_t <= '1' when if_ir(27 downto 26) ="01" else '0';
 
-	mtrans_t <= '1'  when if_ir(27 downto 24) ="100" else '0';
+	mtrans_t <= '1'  when if_ir(27 downto 25) ="100" else '0';
 
 -- decod regop opcode
 
@@ -610,7 +610,7 @@ begin
 			and 
 			(if_ir(4) = '1')
 			)
-		) else (others => '0');						--Rs
+		);		--Rs
 
 	radr3 <= if_ir(3 downto 0) when (
 		(
@@ -637,17 +637,18 @@ begin
 
 	inval_exe <=--	'0' when (if_ir = X"E1A00000") else
 	
-			'1'	when (
+			'0'	when (
 		(
 			branch_t = '1'
 		)
 		 
 		or 
 		(
-			not (tst_i = '1' or teq_i = '1' or cmp_i = '1' or cmn_i = '1')
+			(tst_i = '1' or teq_i = '1' or cmp_i = '1' or cmn_i = '1')
 		)
 		
-	) else '0';
+	) else  '1' when regop_t = '1'
+	else '0';
 
 	inval_mem_adr <=	if_ir (15 downto 12) when (trans_t = '1') else mtrans_rd;
 

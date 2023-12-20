@@ -1,6 +1,6 @@
-GHDL=ghdl-gcc
+GHDL=ghdl
 #GHDL=/usr/bin/ghdl
-GHDL_OP = -v 
+GHDL_OP = -v
 C_MOD_DIR = C_model/
 all : main_tb
 
@@ -22,8 +22,8 @@ arm_core.o : arm_core.vhdl ifetch.o decod.o exec.o mem.o
 ifetch.o : ifetch.vhdl fifo_generic.o
 	${GHDL} -a ${GHDL_OP} ifetch.vhdl
 
-decod.o : Decod.vhdl fifo_32b.o fifo_127b.o reg.o
-	${GHDL} -a ${GHDL_OP} Decod.vhdl
+decod.o : Decod_essais.vhdl fifo_32b.o fifo_127b.o reg.o
+	${GHDL} -a ${GHDL_OP} Decod_essais.vhdl
 
 reg.o : Reg.vhdl 
 	${GHDL} -a ${GHDL_OP} Reg.vhdl
