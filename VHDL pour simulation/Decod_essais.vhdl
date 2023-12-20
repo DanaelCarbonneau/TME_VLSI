@@ -336,7 +336,7 @@ signal cur_state, next_state : state_type;
 
 signal debug_state : Std_Logic_Vector(3 downto 0) := X"0";
 
-signal instruction_valide : Std_Logic;
+signal operv : Std_Logic;
 
 begin
 
@@ -672,11 +672,8 @@ begin
 	)
 	else '0';
 
--- operand validite **TODO** regarder si exec est en train de produire une operande dont j'ai besoin je la choppe au vol. 
--- Peut faire une verion conservatrice en regardant les bits dde validité des opérandes dans reg. 
 
-	operv <=	'1' when (rvalid1 ='1') and (rvalid2 ='1') and (rvalid3 = '1') else 
-				'0';
+
 
 -- Decode to mem interface 
 	ld_dest <= if_ir(15 downto 12);
@@ -778,18 +775,35 @@ begin
 
 	-- Validité de l'instruction (vraie si ses opérandes sont valides)
 
+-- operand validite **TODO** regarder si exec est en train de produire une operande dont j'ai besoin je la choppe au vol. 
+-- Peut faire une verion conservatrice en regardant les bits dde validité des opérandes dans reg. 
 
 	begin 
 		if (regop_t = '1') then 
 			if ((if_ir(25)= '0'))	then -- trois opérandes
 				if (if_ir(4) = '0') then
-					instruction_valide <= '1'  when rvalid1 = '1' and rvalid2 = '1';
+					operv <= '1'  when rvalid1 = '1' and rvalid2 = '1' else '0';
 				else 
-					instruction_valide <= '1' when rvalid1 = '1' and rvalid2 = '1' and rvalid3 = '1';
+					operv <= '1' when rvalid1 = '1' and rvalid2 = '1' and rvalid3 = '1' else '0';
 				end if;
 			else -- Il y a un immédiat, deux opérandes
-				instruction_valide <= '1' when rvalid1 = '1' ;
-			end if
+				operv <= '1' when rvalid1 = '1' else '0' ;
+			end if;
+		else if (branch_t = '1') then
+			operv <= '1';
+		else if (trans_t = '1') then 
+			if (if_ir(25) = '0') then 
+				operv <= '1' when rvalid1 = '1' else '0';
+			else 
+				operv <= '1' when rvalid1 = '1' and rvalid2 = '1' else '0';
+			end if;
+		else if (mult_t = '1') then -- On ne traitera pas ce cas
+			operv <= '0';	
+		else if (blink = '1') then 
+			operv <= '1';
+		else -- peut être d'autres cas à traiter...
+			operv <= '1';
+		end if;
 
 
 -- FSM
@@ -826,38 +840,48 @@ begin
 
 	when RUN => 
 
-
-
-
-
-		if if2dec_empty = '1' or dec2exe_full = '1' or condv = '0' then 				--T1 : ifdec2 vide, dec2exe pleine ou pred invalide, 
-			dec2if_push <= '1'; --action : nouvelle valeur de PC envoyée si dec2if n'est pas pleine
-			next_state <= RUN;
+		if condv = '1' then 
+			if cond = '1' then --prédicat vrai.
+				if operv = '1' then -- opérandes valides
+					if if2dec_empty = '1' or dec2exe_full = '1' then 				--**T1** : ifdec2 vide, dec2exe pleine 
+						inc_pc <= '1';
+						dec2if_push <= '1'; --action : nouvelle valeur de PC envoyée si dec2if n'est pas pleine
+						next_state <= RUN;
+						if2dec_pop <= '0';
+					elsif blink = '1' then 			-- T4 : l'instruction appelle une fonction
+						if2dec_pop <= '0';
+						--TODO invalider PC (vider la suite)
+						dec2if_push <= '0';
+						next_state <= LINK;
+					elsif branch_t ='1' then 			-- T5 : l'instruction est un branchement
+						if2dec_pop <= '1';		--premier pop 
+						--invalider PC 
+						dec2if_push <= '0';
+						next_state <= BRANCH;
+					elsif mtrans_t = '1' then 			-- T6 : l'instruction est un transfert
+						-- TODO faire les transferts
+						next_state <= MTRANS;
+					else 								--T3 : prédicat vrai, on exécute
+						inc_pc <= '1';
+						if2dec_pop <= '1';
+						dec2exe_push <= '1';
+						next_state <= RUN;
+				else -- opérandes invalides, on gèle
+					dec2if_push <= '0';
+					inc_pc <= '0';
+					if2dec_pop <= '0';
+					dec2exe_push <= '0';
+			else --prédicat faux, on passe, **T2**
+				-- action : instruction rejetée
+				dec2if_push <= '1';
+				if2dec_pop <= '1';
+				next_state <= RUN;
+				
+		else --prédicat invalide, on gèle
 			if2dec_pop <= '0';
-		elsif cond = '0' and condv = '1' then 	-- T2 : prédicat faux,
-			-- action : instruction rejetée
-			if2dec_pop <= '1';
-			next_state <= RUN;
-		elsif cond = '1' and condv = '1' then 			-- T3 : prédicat vrai, 
-			-- action : instruction exécutée
-			if2dec_pop <= '1';
-			dec2exe_push <= '1';
-			next_state <= RUN;
-		elsif blink = '1' then 			-- T4 : l'instruction appelle une fonction
-			if2dec_pop <= '0';
-			--TODO invalider PC (vider la suite)
-			dec2if_push <= '0';
-			next_state <= LINK;
-		elsif branch_t ='1' then 			-- T5 : l'instruction est un branchement
-			if2dec_pop <= '1';		--premier pop 
-			--invalider PC 
-			dec2if_push <= '0';
-			next_state <= BRANCH;
-		elsif mtrans_t = '1' then 			-- T6 : l'instruction est un transfert
-		-- TODO faire les transferts
-		next_state <= MTRANS;
-		end if ;
-
+			dec2exe_push <= '0';
+		end if;
+					
 	when LINK =>
 	next_state <= BRANCH;
 		
