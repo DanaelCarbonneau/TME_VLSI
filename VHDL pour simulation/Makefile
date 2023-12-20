@@ -1,6 +1,6 @@
-GHDL=ghdl
+GHDL=ghdl-gcc
 #GHDL=/usr/bin/ghdl
-GHDL_OP = -v
+GHDL_OP = -v 
 C_MOD_DIR = C_model/
 all : main_tb
 

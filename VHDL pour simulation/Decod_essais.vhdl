@@ -131,6 +131,7 @@ component reg
 		inval2		: in Std_Logic;
 
 		inval_czn	: in Std_Logic;
+
 		inval_ovr	: in Std_Logic;
 
 	-- PC
@@ -335,6 +336,8 @@ signal cur_state, next_state : state_type;
 
 signal debug_state : Std_Logic_Vector(3 downto 0) := X"0";
 
+signal instruction_valide : Std_Logic;
+
 begin
 
 	dec2exec : fifo_127b
@@ -475,7 +478,7 @@ begin
 
 -- Execution condition
 
-	cond <= '1' when	(if_ir(31 downto 28) = X"0" and zero = '1') or
+	cond <= '1' when (	(if_ir(31 downto 28) = X"0" and zero = '1') or
 							(if_ir(31 downto 28) = X"1" and zero = '0') or
 							(if_ir(31 downto 28) = X"2" and cry = '1') or
 							(if_ir(31 downto 28) = X"3" and cry = '0') or
@@ -489,27 +492,31 @@ begin
 							(if_ir(31 downto 28) = X"B" and (neg /= ovr)) or
 							(if_ir(31 downto 28) = X"C" and ((neg = ovr) and zero='0')) or
 							(if_ir(31 downto 28) = X"D" and ((neg /= ovr) and zero='1')) or
-							(if_ir(31 downto 28) = X"E") else '0';
+							(if_ir(31 downto 28) = X"E") ) else '0';
 
 
 
-	condv <= '1'		when if_ir(31 downto 28) = X"E" else
-				reg_cznv	when (if_ir(31 downto 28) = X"0" or
-								  if_ir(31 downto 28) = X"1" or
-								  if_ir(31 downto 28) = X"2" or
-								  if_ir(31 downto 28) = X"3" or
-								  if_ir(31 downto 28) = X"4" or
-								  if_ir(31 downto 28) = X"5" or
-								  if_ir(31 downto 28) = X"8" or
-								  if_ir(31 downto 28) = X"9") else
+	condv <= 		'1'		when if_ir(31 downto 28) = X"E" 
+				else
+					reg_cznv	
+							when (if_ir(31 downto 28) = X"0" or
+									if_ir(31 downto 28) = X"1" or
+									if_ir(31 downto 28) = X"2" or
+									if_ir(31 downto 28) = X"3" or
+									if_ir(31 downto 28) = X"4" or
+									if_ir(31 downto 28) = X"5" or
+									if_ir(31 downto 28) = X"8" or
+									if_ir(31 downto 28) = X"9") 
+				else
 
-				reg_vv when (if_ir(31 downto 28) = X"6" or
-							 if_ir(31 downto 28) = X"7" ) else
+					reg_vv 	when (if_ir(31 downto 28) = X"6" or if_ir(31 downto 28) = X"7" )
+				else
 
-				(reg_cznv and reg_vv) when ( if_ir(31 downto 28) = X"A" or
-											 if_ir(31 downto 28) = X"B" or
-											 if_ir(31 downto 28) = X"C" or
-											 if_ir(31 downto 28) = X"D" or ) else '1';
+					(reg_cznv and reg_vv)	when if_ir(31 downto 28) = X"A" or
+												if_ir(31 downto 28) = X"B" or
+												if_ir(31 downto 28) = X"C" or
+												if_ir(31 downto 28) = X"D" 
+				else '1';
 
 
 
@@ -521,11 +528,11 @@ begin
 								if_ir(7 downto 4) = "1001" else '0';
 	swap_t <= '1' when	if_ir(27 downto 23) = "00010" and
 								if_ir(11 downto 4) = "00001001" else '0';
-	branch_t <= '1' when if_ir(27 downto 25) ="101";
+	branch_t <= '1' when if_ir(27 downto 25) ="101" else '0';
 	
-	trans_t <= '1' when if_ir(27 downto 24) ="10" and branch_t = '0' and mtrans_t ='0';
+	trans_t <= '1' when if_ir(27 downto 24) ="10" and branch_t = '0' and mtrans_t ='0' else '0';
 
-	mtrans_t <= '1'  when if_ir(27 downto 24) ="100";
+	mtrans_t <= '1'  when if_ir(27 downto 24) ="100" else '0';
 
 -- decod regop opcode
 
@@ -553,27 +560,37 @@ begin
 -- mtrans instruction
 
 -- branch instruction
-
+	blink <= '0';
 -- Decode interface operands TODO
-	op1 <=	reg_pc		when branch_t = '1'					else
-				....
+	op1 <=	reg_pc	when branch_t = '1'	else
+			exe_res when radr1 = exe_dest else
 				rdata1;
 
-	offset32 <=	
+	offset32(25 downto 0) <=	if_ir(23 downto 0) & '0' & '0';
+	offset32(31 downto 26) <= (others => if_ir(23)); --Extension de signe pas a la mano. :^(
 
-	op2	<=  ....
-				rdata2;
+	op2	<=  offset32 when branch_t = '1' else
+			exe_res	 when ((radr3 = exe_dest) and if_ir(25)='0' and regop_t='1') else
+			X"000000" & if_ir(7 downto 0) when  (regop_t  = '1') and (if_ir(25) = '1') else
+			X"00000" & if_ir(11 downto 0) when  (trans_t  = '1') and (if_ir(25) = '0') else
+				rdata3;
 
-	alu_dest <=	 ..... else
-					if_ir(19 downto 16);
+	alu_dest <=	 if_ir(15 downto 12) when regop_t = '1' else
+				 if_ir(15 downto 12) when trans_t = '1' else
+				 if_ir(19 downto 16);
 
-	alu_wb	<= '1'			when	
-					'0';
+	alu_wb	<= '1'	when (cond = '1') 	and (regop_t  = '1') else
+			   '1'	when (cond = '1') 	and (trans_t  = '1')  and (if_ir(21) = '1') else
+			   '1'	when (cond = '1') 	and (mtrans_t  = '1')  and (if_ir(21) = '1') else
+			   '0';
 
-	flag_wb	<= 
+	flag_wb	<= if_ir(20) when regop_t = '1' else 
+			'0'; 
 
 -- reg read
-	radr1 <= X"F" when branch_t = '1' else if_ir(19 downto 16);		--Rn
+	radr1 <= X"F" when branch_t = '1' else
+				  if_ir(15 downto 12) when mult_t = '1' else 
+				  if_ir(19 downto 16);		--Rn
 				
 	radr2 <=  if_ir(11 downto 8) when ( 
 		(
@@ -595,7 +612,7 @@ begin
 			and 
 			(if_ir(4) = '1')
 			)
-		);						--Rs
+		) else (others => '0');						--Rs
 
 	radr3 <= if_ir(3 downto 0) when (
 		(
@@ -620,28 +637,32 @@ begin
 	inval_exe_adr <= X"F" when branch_t = '1' else
 							if_ir(15 downto 12);
 
-	inval_exe <=	'1'	when (
+	inval_exe <=--	'0' when (if_ir = X"E1A00000") else
+	
+			'1'	when (
 		(
 			branch_t = '1'
-		) 
+		)
+		 
 		or 
 		(
 			not (tst_i = '1' or teq_i = '1' or cmp_i = '1' or cmn_i = '1')
 		)
+		
 	) else '0';
 
 	inval_mem_adr <=	if_ir (15 downto 12) when (trans_t = '1') else mtrans_rd;
 
 	inval_mem <=	'1'	when trans_t = '1' else	'0';
 
-	inval_czn <= if_ir(20) when (regop_t = '1') or ( mult_t = '1') else 0;
+	inval_czn <= if_ir(20) when (regop_t = '1') or ( mult_t = '1') else '0';
 			
 
 	inval_ovr <= if_ir(20) when (
 		(
 			(regop_t = '1') and
 				(
-					add_i = '1' or sub_i = '1' or rsb_i = '1' or adc_i = '1' or sbc_i = '1' or rcs_i = '1' or cmp_i = '1' or cmn_i = '1'
+					add_i = '1' or sub_i = '1' or rsb_i = '1' or adc_i = '1' or sbc_i = '1' or rsc_i = '1' or cmp_i = '1' or cmn_i = '1'
 				)
 		)
 		or 
@@ -649,23 +670,25 @@ begin
 			mult_t = '1'
 			) 
 	)
-	else 0;
+	else '0';
 
--- operand validite **TODO**
+-- operand validite **TODO** regarder si exec est en train de produire une operande dont j'ai besoin je la choppe au vol. 
+-- Peut faire une verion conservatrice en regardant les bits dde validité des opérandes dans reg. 
 
-	operv <=	'1' when  
+	operv <=	'1' when (rvalid1 ='1') and (rvalid2 ='1') and (rvalid3 = '1') else 
 				'0';
 
 -- Decode to mem interface 
 	ld_dest <= if_ir(15 downto 12);
-	pre_index <= if_ir(24);		
+	pre_index <= if_ir(24);		--QUESTION POUR UN JEAN LOU when accès mémoire ?
 
-	ldrb_i <= '1' when ((trans_t = '1') and (if_ir(20) = '1') and (if_ir(22) = '1') ) else 0;
-	strb_i <= '1' when ((trans_t = '1') and (if_ir(20) = '0') and (if_ir(22) = '1') ) else 0;
+	ldrb_i <= '1' when ((trans_t = '1') and (if_ir(20) = '1') and (if_ir(22) = '1') ) else '0';
+	strb_i <= '1' when ((trans_t = '1') and (if_ir(20) = '0') and (if_ir(22) = '1') ) else '0';
 	
-	mem_lw <= '1' when ((trans_t = '1') and (if_ir(20) = '1') and (if_ir(22) = '0') ) else 0;
+	-- QUESTION POUR UN JEAN LOU pourquoi des signaux pour les b ?
+	mem_lw <= '1' when ((trans_t = '1') and (if_ir(20) = '1') and (if_ir(22) = '0') ) else '0';
 	mem_lb <= ldrb_i;
-	mem_sw <= '1' when ((trans_t = '1') and (if_ir(20) = '0') and (if_ir(22) = '0') ) else 0;
+	mem_sw <= '1' when ((trans_t = '1') and (if_ir(20) = '0') and (if_ir(22) = '0') ) else '0';
 	mem_sb <= strb_i;
 
 -- Shifter command
@@ -691,7 +714,7 @@ begin
 	comp_op2	<=	'1' when sub_i = '1' or sbc_i = '1' or cmp_i = '1' or mvn_i ='1' or bic_i ='1' else '0'; 
 
 	alu_cy <=	'1'	when sub_i = '1' else 
-				'0' when add_i = '1' mov_i='1' else
+				'0' when add_i = '1' or mov_i='1' else
 				cry when adc_i ='1' or sbc_i = '1' or rsc_i = '1' else
 				'0'; 
 
@@ -706,7 +729,7 @@ begin
 	process (ck)
 	begin
 		if (rising_edge(ck)) then
-		....
+		--TODO or not to do --
 		end if;
 	end process;
 
@@ -752,6 +775,23 @@ begin
 						X"E" when mtrans_list(14) = '1' else
 						X"F";
 
+
+	-- Validité de l'instruction (vraie si ses opérandes sont valides)
+
+
+	begin 
+		if (regop_t = '1') then 
+			if ((if_ir(25)= '0'))	then -- trois opérandes
+				if (if_ir(4) = '0') then
+					instruction_valide <= '1'  when rvalid1 = '1' and rvalid2 = '1';
+				else 
+					instruction_valide <= '1' when rvalid1 = '1' and rvalid2 = '1' and rvalid3 = '1';
+				end if;
+			else -- Il y a un immédiat, deux opérandes
+				instruction_valide <= '1' when rvalid1 = '1' ;
+			end if
+
+
 -- FSM
 
 process (ck)
@@ -773,84 +813,62 @@ process (cur_state, dec2if_full, cond, condv, operv, dec2exe_full, if2dec_empty,
 			branch_t, and_i, eor_i, sub_i, rsb_i, add_i, adc_i, sbc_i, rsc_i, orr_i, mov_i, bic_i,
 			mvn_i, ldr_i, ldrb_i, ldm_i, stm_i, if_ir, mtrans_rd, mtrans_mask_shift)
 begin
-	case cur_state is
+	case next_state is
 
 	when FETCH =>
-		debug_state <= X"1";
-		if2dec_pop <= '0';
-		dec2exe_push <= '0';
-		blink <= '0';
-		mtrans_shift <= '0';
-		mtrans_loop_adr <= '0';
-
 		if dec2if_full = '0' and reg_pcv = '1' then 	-- la FIFO n'est pas pleine
 
 			dec2if_push <= '1';
-			cur_state <= RUN;
+			next_state <= RUN;
 		else --la FIFO est pleine, on reste dans FETCH
-			cur_state <= FECTH
-		end if;
-			
+			next_state <= FETCH;
+		end if;			
+
 	when RUN => 
+
+
+
+
+
 		if if2dec_empty = '1' or dec2exe_full = '1' or condv = '0' then 				--T1 : ifdec2 vide, dec2exe pleine ou pred invalide, 
-			dec2if_push; --action : nouvelle valeur de PC envoyée si dec2if n'est pas pleine
-			cur_state <= RUN;
+			dec2if_push <= '1'; --action : nouvelle valeur de PC envoyée si dec2if n'est pas pleine
+			next_state <= RUN;
 			if2dec_pop <= '0';
-		else if cond then 			-- T2 : prédicat faux,
+		elsif cond = '0' and condv = '1' then 	-- T2 : prédicat faux,
 			-- action : instruction rejetée
 			if2dec_pop <= '1';
-			cur_state <= RUN;
-		else if cond then 			-- T3 : prédicat vrai, 
+			next_state <= RUN;
+		elsif cond = '1' and condv = '1' then 			-- T3 : prédicat vrai, 
 			-- action : instruction exécutée
 			if2dec_pop <= '1';
 			dec2exe_push <= '1';
-			cur_state <= RUN;
-		else if cond then 			-- T4 : l'instruction appelle une fonction
+			next_state <= RUN;
+		elsif blink = '1' then 			-- T4 : l'instruction appelle une fonction
 			if2dec_pop <= '0';
 			--TODO invalider PC (vider la suite)
-			inval_adr1 <= X"F";
-			inval1 <= '1';
-			inc_pc <= '0';
-			cur_state <= LINK;
-		else if cond then 			-- T5 : l'instruction est un branchement
+			dec2if_push <= '0';
+			next_state <= LINK;
+		elsif branch_t ='1' then 			-- T5 : l'instruction est un branchement
 			if2dec_pop <= '1';		--premier pop 
 			--invalider PC 
-			inval_adr1 <= X"F";
-			inval1 <= '1';
-			inc_pc <= '0';
-			cur_state <= BRANCH;
-		else if cond then 			-- T6 : l'instruction est un transfert
-			-- TODO faire les transferts
-			cur_state <= MTRANS;
+			dec2if_push <= '0';
+			next_state <= BRANCH;
+		elsif mtrans_t = '1' then 			-- T6 : l'instruction est un transfert
+		-- TODO faire les transferts
+		next_state <= MTRANS;
 		end if ;
 
 	when LINK =>
-		-- T1 , commande d'exec pour calculer une nouvelle valeur de PC (passer de +8 à +4)
-
-		wdata1 <= reg_pc;-- -4 sur le PC ici
-		wadr1 <= X"E";
-		wen1 <= '1';
-		cur_state <= BRANCH;
+	next_state <= BRANCH;
+		
 
 	when BRANCH => -- calcule l'adresse de branchement
-
-		if if2dec_empty = '1' then --T1 if2dec vide
-
-			cur_state <= BRANCH;
+	next_state <= MTRANS;
 		
-		else	-- T2 if2dec non vide
-			if2dec_pop <= '1';
-			cur_state <= RUN;
-		end if;
 
 	when MTRANS => --TODO (raf)
-		if '1'='1' then 		--fin du traitement des instructions de transfert
-
-			cur_state <= RUN;
-		else
-			cur_state <= MTRANS;
-
-		end if;
+	next_state <= FETCH;
+		
 
 	end case;
 end process;
