@@ -101,7 +101,7 @@ component registre_32b
 	);
 end component;
 
---bitmamp de validité des registres --
+--bitmap de validité des registres --
 signal valid_r_bitmap 	: std_logic_vector (15 downto 0);
 
 --signaux d'entrée des registres

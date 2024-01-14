@@ -704,6 +704,7 @@ begin
 	shift_rrx <= '1' when (((regop_t = '1') or ((trans_t = '1'))) and (shift_ror = '1'  and if_ir (11 downto 7) = X"0" )) else '0';
 
 	shift_val <=	"00010"	when branch_t = '1' or trans_t = '1'	else
+					exe_res(4 downto 0) when ((radr2 = exe_dest) and (((regop_t = '1') and (if_ir(25) ='0') and (if_ir(4) = '1')) or ((trans_t = '1') and (if_ir(25) ='1') and (if_ir(4) = '1')))) else
 					if_ir(11 downto 7) when (((regop_t = '1') and (if_ir(25) ='0') and (if_ir(4) = '0')) or ((trans_t = '1') and (if_ir(25) ='1') and (if_ir(4) = '0'))) else
 					rdata2(4 downto 0) when (((regop_t = '1') and (if_ir(25) ='0') and (if_ir(4) = '1')) or ((trans_t = '1') and (if_ir(25) ='1') and (if_ir(4) = '1'))) else
 					if_ir(11 downto 8) & '0' when (((regop_t = '1') and (if_ir(25) ='1'))) or ((trans_t = '1') and (if_ir(25) ='0')) else 
