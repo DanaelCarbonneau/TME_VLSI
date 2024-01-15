@@ -597,8 +597,9 @@ begin
 
 -- reg read
 	radr1 <= X"F" when branch_t = '1' else
-				  if_ir(15 downto 12) when mult_t = '1' else 
-				  if_ir(19 downto 16);		--Rn
+				if_ir(15 downto 12) when mem_sw = '1' or mem_sb = '1' else
+				if_ir(15 downto 12) when mult_t = '1' else 
+				if_ir(19 downto 16);		--Rn
 				
 	radr2 <=  if_ir(11 downto 8) when ( 
 		(
@@ -704,7 +705,6 @@ begin
 	shift_rrx <= '1' when (((regop_t = '1') or ((trans_t = '1'))) and (shift_ror = '1'  and if_ir (11 downto 7) = X"0" )) else '0';
 
 	shift_val <=	"00010"	when branch_t = '1' or trans_t = '1'	else
-					exe_res(4 downto 0) when ((radr2 = exe_dest) and (((regop_t = '1') and (if_ir(25) ='0') and (if_ir(4) = '1')) or ((trans_t = '1') and (if_ir(25) ='1') and (if_ir(4) = '1')))) else
 					if_ir(11 downto 7) when (((regop_t = '1') and (if_ir(25) ='0') and (if_ir(4) = '0')) or ((trans_t = '1') and (if_ir(25) ='1') and (if_ir(4) = '0'))) else
 					rdata2(4 downto 0) when (((regop_t = '1') and (if_ir(25) ='0') and (if_ir(4) = '1')) or ((trans_t = '1') and (if_ir(25) ='1') and (if_ir(4) = '1'))) else
 					if_ir(11 downto 8) & '0' when (((regop_t = '1') and (if_ir(25) ='1'))) or ((trans_t = '1') and (if_ir(25) ='0')) else 
@@ -950,7 +950,8 @@ begin
 		
 
 	when MTRANS => --TODO (raf)
-	next_state <= FETCH;
+-- Bloquer tant qu'on a pas fini de transférerer
+
 		
 
 	end case;
