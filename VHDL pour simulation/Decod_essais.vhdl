@@ -186,6 +186,8 @@ component fifo_32b
 	);
 end component;
 
+signal debug : Std_Logic;
+
 signal cond		: Std_Logic;
 signal condv	: Std_Logic;
 signal operv	: Std_Logic;
@@ -235,6 +237,7 @@ signal bl_i   : Std_Logic;
 
 -- link
 signal blink    : Std_Logic;
+signal linked	: Std_logic;
 
 -- Multiple transferts
 signal mtrans_shift : Std_Logic;
@@ -348,7 +351,7 @@ begin
 					din(57)	 => alu_wb,
 					din(56)	 => flag_wb,
 
-					din(55 downto 24)	 => rdata3,
+					din(55 downto 24)	 => rdata1,
 					din(23 downto 20)	 => ld_dest,
 					din(19)	 => mem_lw,
 					din(18)	 => mem_lb,
@@ -530,7 +533,7 @@ begin
 								if_ir(11 downto 4) = "00001001" else '0';
 	branch_t <= '1' when if_ir(27 downto 25) ="101" else '0';
 	
-	trans_t <= '1' when if_ir(27 downto 24) ="10" and branch_t = '0' and mtrans_t ='0' else '0';
+	trans_t <= '1' when if_ir(27 downto 26) ="01" else '0';
 
 	mtrans_t <= '1'  when if_ir(27 downto 24) ="100" else '0';
 
@@ -560,16 +563,18 @@ begin
 -- mtrans instruction
 
 -- branch instruction
-	blink <= '0';
+	blink <= '1' when (branch_t = '1' and if_ir(24)='1' and linked = '0')
+	else '0';
 -- Decode interface operands TODO
-	op1 <=	reg_pc	when branch_t = '1'	else
+	op1 <=	reg_pc	when branch_t = '1'	or trans_t = '1' else
 			exe_res when radr1 = exe_dest else
 				rdata1;
 
 	offset32(25 downto 0) <=	if_ir(23 downto 0) & '0' & '0';
 	offset32(31 downto 26) <= (others => if_ir(23)); --Extension de signe pas a la mano. :^(
 
-	op2	<=  offset32 when branch_t = '1' else
+	op2	<=  offset32 when branch_t = '1' and blink='0' else
+			X"00000004" when blink ='1' else
 			exe_res	 when ((radr3 = exe_dest) and if_ir(25)='0' and regop_t='1') else
 			X"000000" & if_ir(7 downto 0) when  (regop_t  = '1') and (if_ir(25) = '1') else
 			X"00000" & if_ir(11 downto 0) when  (trans_t  = '1') and (if_ir(25) = '0') else
@@ -577,6 +582,7 @@ begin
 
 	alu_dest <=	 if_ir(15 downto 12) when regop_t = '1' else
 				 if_ir(15 downto 12) when trans_t = '1' else
+				 X"E" when blink = '1' else
 				 X"F" when branch_t = '1' else
 				 if_ir(19 downto 16);
 
@@ -591,8 +597,9 @@ begin
 
 -- reg read
 	radr1 <= X"F" when branch_t = '1' else
-				  if_ir(15 downto 12) when mult_t = '1' else 
-				  if_ir(19 downto 16);		--Rn
+				if_ir(15 downto 12) when mem_sw = '1' or mem_sb = '1' else
+				if_ir(15 downto 12) when mult_t = '1' else 
+				if_ir(19 downto 16);		--Rn
 				
 	radr2 <=  if_ir(11 downto 8) when ( 
 		(
@@ -636,7 +643,8 @@ begin
 
 -- Reg Invalid
 
-	inval_exe_adr <= X"F" when branch_t = '1' else
+	inval_exe_adr <= X"F" when branch_t = '1' and blink='0' else
+						X"E" when blink='1' else X"0" when trans_t = '1' else
 							if_ir(15 downto 12);
 
 	inval_exe <=--	'0' when (if_ir = X"E1A00000") else
@@ -649,7 +657,7 @@ begin
 	) else  '1' when regop_t = '1' or branch_t = '1'
 	else '0';
 
-	inval_mem_adr <=	if_ir (15 downto 12) when (trans_t = '1') else mtrans_rd;
+	inval_mem_adr <=	if_ir (15 downto 12) when (trans_t = '1') else inval_mem_adr;
 
 	inval_mem <=	'1'	when trans_t = '1' else	'0';
 
@@ -692,11 +700,11 @@ begin
 	shift_lsr <= '1' when (((regop_t = '1') or ((trans_t = '1') and (if_ir(25) = '1')) )and (if_ir(6 downto 5) = "01")) else '0';
 	shift_asr <= '1' when (((regop_t = '1') or ((trans_t = '1') and (if_ir(25) = '1')) )and (if_ir(6 downto 5) = "10")) else '0';
 
-	shift_ror <= '1' when (((regop_t = '1') and (if_ir(25) = '1')) or ((trans_t = '1') and (if_ir(25) = '0')) or (((regop_t = '1') or ((trans_t = '1') and (if_ir(25) = '1')) )and (if_ir(6 downto 5) = "11")) ) else '0';
+	shift_ror <= '1' when (((regop_t = '1') and (if_ir(25) = '1')) or (((regop_t = '1') or ((trans_t = '1') and (if_ir(25) = '1')) )and (if_ir(6 downto 5) = "11")) ) else '0';
 	
 	shift_rrx <= '1' when (((regop_t = '1') or ((trans_t = '1'))) and (shift_ror = '1'  and if_ir (11 downto 7) = X"0" )) else '0';
 
-	shift_val <=	"00010"	when branch_t = '1'	else
+	shift_val <=	"00010"	when branch_t = '1' or trans_t = '1'	else
 					if_ir(11 downto 7) when (((regop_t = '1') and (if_ir(25) ='0') and (if_ir(4) = '0')) or ((trans_t = '1') and (if_ir(25) ='1') and (if_ir(4) = '0'))) else
 					rdata2(4 downto 0) when (((regop_t = '1') and (if_ir(25) ='0') and (if_ir(4) = '1')) or ((trans_t = '1') and (if_ir(25) ='1') and (if_ir(4) = '1'))) else
 					if_ir(11 downto 8) & '0' when (((regop_t = '1') and (if_ir(25) ='1'))) or ((trans_t = '1') and (if_ir(25) ='0')) else 
@@ -715,7 +723,7 @@ begin
 
 -- Alu command
 
-	alu_cmd <=	"00" when add_i ='1' or sub_i ='1' or rsb_i ='1' or adc_i ='1' or sbc_i ='1' or rsc_i ='1' or cmp_i ='1' or cmn_i ='1' or branch_t = '1' else
+	alu_cmd <=	"00" when add_i ='1' or sub_i ='1' or rsb_i ='1' or adc_i ='1' or sbc_i ='1' or rsc_i ='1' or cmp_i ='1' or cmn_i ='1' or branch_t = '1' or trans_t='1' else
 				"10" when orr_i ='1' or mov_i ='1' or mvn_i ='1' else
 				"01" when tst_i ='1' or and_i ='1' or mov_i ='1' else
 				"11" when eor_i ='1' or teq_i ='1';
@@ -724,7 +732,7 @@ begin
 	process (ck)
 	begin
 		if (rising_edge(ck)) then
-		--TODO or not to do --
+			
 		end if;
 	end process;
 
@@ -853,9 +861,12 @@ process (cur_state, dec2if_full, cond, condv, operv, dec2exe_full, if2dec_empty,
 			branch_t, and_i, eor_i, sub_i, rsb_i, add_i, adc_i, sbc_i, rsc_i, orr_i, mov_i, bic_i,
 			mvn_i, ldr_i, ldrb_i, ldm_i, stm_i, if_ir, mtrans_rd, mtrans_mask_shift)
 begin
+
+	 
 	case next_state is
 
 	when FETCH =>
+		debug_state <= "0000";
 		if dec2if_full = '0' and reg_pcv = '1' then 	-- la FIFO n'est pas pleine
 
 			dec2if_push <= '1';
@@ -865,7 +876,7 @@ begin
 		end if;			
 
 	when RUN => 
-
+		linked <= '0';
 		if condv = '1' then 
 			if cond = '1' then --prédicat vrai.
 				if operv = '1' then -- opérandes valides
@@ -875,20 +886,27 @@ begin
 						dec2if_push <= '1'; --action : nouvelle valeur de PC envoyée si dec2if n'est pas pleine
 						next_state <= RUN;
 						if2dec_pop <= '0';
-					elsif blink = '1' then 			-- T4 : l'instruction appelle une fonction
-						if2dec_pop <= '0';
+					--elsif blink = '1' then 			-- T4 : l'instruction appelle une fonction (prooblème avec les if ????)
+					--	if2dec_pop <= '0';
+					--	debug <= '1';
 						--TODO invalider PC (vider la suite)
-						dec2if_push <= '0';
-						next_state <= LINK;
+					--	dec2if_push <= '0';
+					--	next_state <= LINK;
+					--	inc_pc <= '0';
+					--	debug_state <= "1001";
 					elsif branch_t ='1' then 			-- T5 : l'instruction est un branchement
+						ugh <= "01010101";
 						dec2exe_push <= '1';		--On n'envoie rien à exécuter
 						dec2if_push <= '0';
 						inc_pc <= '0';				--on arrête d'incrémenter PC
 						next_state <= BRANCH;
+						debug_state <= "1000";
+
 					elsif mtrans_t = '1' then 			-- T6 : l'instruction est un transfert
 						-- TODO faire les transferts
 						next_state <= MTRANS;
 					else 								--T3 : prédicat vrai, on exécute
+
 						inc_pc <= '1';
 						if2dec_pop <= '1';
 						dec2exe_push <= '1';
@@ -916,12 +934,19 @@ begin
 		end if;
 					
 	when LINK =>
-	next_state <= BRANCH;
+		linked <= '1';
+		dec2exe_push <= '1';		--On n'envoie rien à exécuter
+		dec2if_push <= '0';
+		inc_pc <= '0';				--on arrête d'incrémenter PC
+		next_state <= BRANCH;
 		
 
 	when BRANCH => -- calcule l'adresse de branchement
 
-		if reg_pcv = '1' then
+		if cond = '0' then
+			inc_pc <= '1';
+			next_state <= RUN;
+		elsif reg_pcv = '1' then
 			if2dec_pop <= '1'; 
 			next_state <= RUN;
 		else 
@@ -931,7 +956,8 @@ begin
 		
 
 	when MTRANS => --TODO (raf)
-	next_state <= FETCH;
+-- Bloquer tant qu'on a pas fini de transférerer
+
 		
 
 	end case;
